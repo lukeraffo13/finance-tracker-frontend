@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Finance Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #0F172A;
+      color: #F1F5F9;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    /* ── Header ── */
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    header h1 {
+      font-size: 2.25rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    header p {
+      margin-top: 0.4rem;
+      color: #94A3B8;
+      font-size: 1rem;
+    }
+
+    /* ── Summary Cards ── */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.25rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .card {
+      background: #1E293B;
+      border-radius: 12px;
+      padding: 1.5rem 1.75rem;
+      border: 1px solid #334155;
+    }
+
+    .card h3 {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #94A3B8;
+      margin-bottom: 0.6rem;
+    }
+
+    .card .amount {
+      font-size: 1.9rem;
+      font-weight: 700;
+    }
+
+    #total-income  .amount { color: #22C55E; }
+    #total-expenses .amount { color: #EF4444; }
+    #net-balance   .amount { color: #F1F5F9; }
+
+    /* ── Sections shared ── */
+    section {
+      background: #1E293B;
+      border-radius: 12px;
+      border: 1px solid #334155;
+      padding: 1.75rem;
+      margin-bottom: 2rem;
+    }
+
+    section h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 1.25rem;
+      color: #E2E8F0;
+    }
+
+    /* ── Form ── */
+    #add-form {
+      display: grid;
+      grid-template-columns: 1fr 1fr 2fr auto;
+      gap: 1rem;
+      align-items: end;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    label {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: #94A3B8;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    input, select {
+      background: #0F172A;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      color: #F1F5F9;
+      font-size: 0.95rem;
+      padding: 0.6rem 0.85rem;
+      outline: none;
+      transition: border-color 0.2s;
+      width: 100%;
+    }
+
+    input:focus, select:focus {
+      border-color: #6366F1;
+      outline: 2px solid #6366F1;
+      outline-offset: 2px;
+    }
+
+    select option {
+      background: #1E293B;
+    }
+
+    button[type="submit"] {
+      background: #6366F1;
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: 600;
+      padding: 0.65rem 1.4rem;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+
+    button[type="submit"]:hover {
+      background: #4F46E5;
+    }
+
+    button[type="submit"]:focus-visible {
+      outline: 2px solid #6366F1;
+      outline-offset: 2px;
+    }
+
+    /* ── Chart ── */
+    .chart-section {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #spending-chart {
+      max-width: 420px;
+      max-height: 420px;
+    }
+
+    /* ── Transactions Table ── */
+    .table-wrapper {
+      overflow-x: auto;
+    }
+
+    #transactions-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    #transactions-table thead tr {
+      border-bottom: 1px solid #334155;
+    }
+
+    #transactions-table th {
+      text-align: left;
+      padding: 0.6rem 1rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: #94A3B8;
+    }
+
+    #transactions-table tbody tr {
+      border-bottom: 1px solid #1E293B;
+      transition: background 0.15s;
+    }
+
+    #transactions-table tbody tr:hover {
+      background: #243147;
+    }
+
+    #transactions-table td {
+      padding: 0.75rem 1rem;
+      color: #CBD5E1;
+    }
+
+    #transactions-table td.positive { color: #22C55E; font-weight: 600; }
+    #transactions-table td.negative { color: #EF4444; font-weight: 600; }
+
+    .btn-delete {
+      background: transparent;
+      border: 1px solid #EF4444;
+      border-radius: 6px;
+      color: #EF4444;
+      cursor: pointer;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 0.3rem 0.7rem;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .btn-delete:hover {
+      background: #EF4444;
+      color: #fff;
+    }
+
+    .btn-delete:focus-visible {
+      outline: 2px solid #EF4444;
+      outline-offset: 2px;
+    }
+
+    .empty-row td {
+      text-align: center;
+      color: #64748B;
+      padding: 2rem;
+      font-style: italic;
+    }
+
+    /* ── Filter Bar ── */
+    .filter-bar {
+      display: flex;
+      gap: 1rem;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      margin-bottom: 2rem;
+    }
+
+    .filter-bar .field {
+      flex: 1;
+      min-width: 160px;
+      max-width: 220px;
+    }
+
+    #export-btn {
+      background: transparent;
+      border: 1px solid #6366F1;
+      border-radius: 8px;
+      color: #6366F1;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: 600;
+      padding: 0.65rem 1.4rem;
+      transition: background 0.2s, color 0.2s;
+      white-space: nowrap;
+      align-self: flex-end;
+    }
+
+    #export-btn:hover {
+      background: #6366F1;
+      color: #fff;
+    }
+
+    #export-btn:focus-visible {
+      outline: 2px solid #6366F1;
+      outline-offset: 2px;
+    }
+
+    /* ── AI Insights ── */
+    .insights-section h2 {
+      margin-bottom: 1.25rem;
+    }
+
+    #analyze-btn {
+      background: #6366F1;
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: 600;
+      padding: 0.65rem 1.4rem;
+      transition: background 0.2s;
+      margin-bottom: 1.25rem;
+      display: inline-block;
+    }
+
+    #analyze-btn:hover {
+      background: #4F46E5;
+    }
+
+    #analyze-btn:focus-visible {
+      outline: 2px solid #6366F1;
+      outline-offset: 2px;
+    }
+
+    #analyze-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    #copy-btn {
+      background: transparent;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      color: #94A3B8;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 0.4rem 0.9rem;
+      transition: border-color 0.2s, color 0.2s;
+      margin-bottom: 1.25rem;
+      margin-left: 0.5rem;
+      display: none;
+    }
+
+    #copy-btn:hover {
+      border-color: #6366F1;
+      color: #6366F1;
+    }
+
+    #copy-btn:focus-visible {
+      outline: 2px solid #6366F1;
+      outline-offset: 2px;
+    }
+
+    #copy-btn.copied {
+      border-color: #22C55E;
+      color: #22C55E;
+    }
+
+    #insight-display {
+      background: #0F172A;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      min-height: 3.5rem;
+      white-space: pre-wrap;
+    }
+
+    #insight-display.placeholder {
+      color: #64748B;
+      font-style: italic;
+    }
+
+    #insight-loading {
+      color: #94A3B8;
+      font-size: 0.9rem;
+      font-style: italic;
+      margin-bottom: 0.75rem;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .summary-grid {
+        grid-template-columns: 1fr;
+      }
+
+      #add-form {
+        grid-template-columns: 1fr;
+      }
+
+      .filter-bar .field {
+        max-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <h1>Finance Tracker</h1>
+    <p>Track your spending</p>
+  </header>
+
+  <!-- Summary Cards -->
+  <div class="summary-grid">
+    <div class="card" id="total-income">
+      <h3>Total Income</h3>
+      <div class="amount">$0.00</div>
+    </div>
+    <div class="card" id="total-expenses">
+      <h3>Total Expenses</h3>
+      <div class="amount">$0.00</div>
+    </div>
+    <div class="card" id="net-balance">
+      <h3>Net Balance</h3>
+      <div class="amount">$0.00</div>
+    </div>
+  </div>
+
+  <!-- Add Transaction Form -->
+  <section>
+    <h2>Add Transaction</h2>
+    <form id="add-form" novalidate>
+      <div class="field">
+        <label for="amount">Amount</label>
+        <input type="number" id="amount" placeholder="0.00" min="0.01" step="0.01" required />
+      </div>
+      <div class="field">
+        <label for="category">Category</label>
+        <select id="category" required>
+          <option value="" disabled selected>Select…</option>
+          <option value="Food">Food</option>
+          <option value="Transport">Transport</option>
+          <option value="Housing">Housing</option>
+          <option value="Entertainment">Entertainment</option>
+          <option value="Utilities">Utilities</option>
+          <option value="Income">Income</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="description">Description</label>
+        <input type="text" id="description" placeholder="What was this for?" required />
+      </div>
+      <button type="submit">Add Transaction</button>
+    </form>
+  </section>
+
+  <!-- Chart -->
+  <section class="chart-section">
+    <canvas id="spending-chart" role="img" aria-label="Doughnut chart showing spending by category"></canvas>
+    <p id="chart-empty" aria-live="polite" style="display:none; color:#475569; font-style:italic;">No expense data yet.</p>
+  </section>
+
+  <!-- AI Insights -->
+  <section class="insights-section">
+    <h2>AI Insights</h2>
+    <button id="analyze-btn"><span aria-hidden="true">✨</span> Analyze My Spending</button>
+    <button id="copy-btn" aria-label="Copy insight to clipboard">Copy</button>
+    <div id="insight-loading" role="status" aria-live="polite" style="display:none;">Claude is analyzing your spending...</div>
+    <div id="insight-display" class="placeholder" aria-live="polite" aria-atomic="true">Click the button to get personalized insights from Claude.</div>
+  </section>
+
+  <!-- Filter Bar -->
+  <div class="filter-bar">
+    <div class="field">
+      <label for="filter-category">Category</label>
+      <select id="filter-category">
+        <option value="All">All</option>
+        <option value="Food">Food</option>
+        <option value="Transport">Transport</option>
+        <option value="Housing">Housing</option>
+        <option value="Entertainment">Entertainment</option>
+        <option value="Utilities">Utilities</option>
+        <option value="Income">Income</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="filter-month">Month</label>
+      <select id="filter-month">
+        <option value="All">All</option>
+        <option value="1">January</option>
+        <option value="2">February</option>
+        <option value="3">March</option>
+        <option value="4">April</option>
+        <option value="5">May</option>
+        <option value="6">June</option>
+        <option value="7">July</option>
+        <option value="8">August</option>
+        <option value="9">September</option>
+        <option value="10">October</option>
+        <option value="11">November</option>
+        <option value="12">December</option>
+      </select>
+    </div>
+    <button id="export-btn">Export CSV</button>
+  </div>
+
+  <!-- Transaction List -->
+  <section>
+    <h2>Transactions</h2>
+    <div class="table-wrapper">
+      <table id="transactions-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Description</th>
+            <th>Category</th>
+            <th>Amount</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="empty-row">
+            <td colspan="5">No transactions yet. Add one above.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <script>
+    const INCOME_CATEGORIES = new Set(['Income']);
+
+    let transactions = JSON.parse(localStorage.getItem('ft_transactions') || '[]');
+
+    // ── Chart setup ──
+    const ctx = document.getElementById('spending-chart').getContext('2d');
+    const PALETTE = [
+      '#6366F1', '#22C55E', '#EF4444', '#F59E0B',
+      '#06B6D4', '#A855F7', '#EC4899'
+    ];
+
+    const chart = new Chart(ctx, {
+      type: 'doughnut',
+      data: { labels: [], datasets: [{ data: [], backgroundColor: PALETTE, borderWidth: 2, borderColor: '#1E293B' }] },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { color: '#CBD5E1', padding: 14, font: { size: 13 } }
+          },
+          tooltip: {
+            callbacks: {
+              label: ctx => ` $${ctx.parsed.toFixed(2)}`
+            }
+          }
+        }
+      }
+    });
+
+    // ── Helpers ──
+    function fmt(n) {
+      return '$' + Math.abs(n).toFixed(2);
+    }
+
+    function dateStr(iso) {
+      return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function isIncome(cat) {
+      return INCOME_CATEGORIES.has(cat);
+    }
+
+    // ── Render ──
+    function render() {
+      const income   = transactions.filter(t => isIncome(t.category)).reduce((s, t) => s + t.amount, 0);
+      const expenses = transactions.filter(t => !isIncome(t.category)).reduce((s, t) => s + t.amount, 0);
+      const net      = income - expenses;
+
+      const incomeEl = document.querySelector('#total-income .amount');
+      incomeEl.textContent = fmt(income);
+      incomeEl.setAttribute('aria-label', `Total income: ${fmt(income)}`);
+
+      const expensesEl = document.querySelector('#total-expenses .amount');
+      expensesEl.textContent = fmt(expenses);
+      expensesEl.setAttribute('aria-label', `Total expenses: ${fmt(expenses)}`);
+
+      const netEl = document.querySelector('#net-balance .amount');
+      netEl.textContent = fmt(net);
+      netEl.style.color = net >= 0 ? '#22C55E' : '#EF4444';
+      netEl.setAttribute('aria-label', `Net balance: ${fmt(net)}`);
+
+      renderTable();
+      renderChart();
+      localStorage.setItem('ft_transactions', JSON.stringify(transactions));
+    }
+
+    function getFilteredTransactions() {
+      const cat = document.getElementById('filter-category').value;
+      const mon = document.getElementById('filter-month').value;
+      return transactions.filter(t => {
+        const catMatch = cat === 'All' || t.category === cat;
+        const monMatch = mon === 'All' || (new Date(t.date).getMonth() + 1) === Number(mon);
+        return catMatch && monMatch;
+      });
+    }
+
+    function renderTable() {
+      const tbody    = document.querySelector('#transactions-table tbody');
+      const filtered = getFilteredTransactions();
+
+      if (filtered.length === 0) {
+        const msg = transactions.length === 0
+          ? 'No transactions yet. Add one above.'
+          : 'No transactions match the current filters.';
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="5">${msg}</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = [...filtered].reverse().map(t => {
+        const income = isIncome(t.category);
+        const sign   = income ? '+' : '-';
+        const cls    = income ? 'positive' : 'negative';
+        return `
+          <tr>
+            <td>${dateStr(t.date)}</td>
+            <td>${escHtml(t.description)}</td>
+            <td>${escHtml(t.category)}</td>
+            <td class="${cls}">${sign}${fmt(t.amount)}</td>
+            <td><button class="btn-delete" data-id="${t.id}" aria-label="Delete transaction: ${escHtml(t.description)}">Delete</button></td>
+          </tr>`;
+      }).join('');
+    }
+
+    function renderChart() {
+      const expenseTransactions = transactions.filter(t => !isIncome(t.category));
+      const isEmpty = expenseTransactions.length === 0;
+
+      document.getElementById('chart-empty').style.display = isEmpty ? 'block' : 'none';
+
+      if (isEmpty) {
+        chart.data.labels = ['No data'];
+        chart.data.datasets[0].data = [1];
+        chart.data.datasets[0].backgroundColor = ['#334155'];
+        chart.update();
+        return;
+      }
+
+      const totals = {};
+      expenseTransactions.forEach(t => {
+        totals[t.category] = (totals[t.category] || 0) + t.amount;
+      });
+
+      chart.data.labels = Object.keys(totals);
+      chart.data.datasets[0].data = Object.values(totals);
+      chart.data.datasets[0].backgroundColor = PALETTE;
+      chart.update();
+    }
+
+    function escHtml(str) {
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ── Form submit ──
+    document.getElementById('add-form').addEventListener('submit', e => {
+      e.preventDefault();
+      const amountRaw = parseFloat(document.getElementById('amount').value);
+      const category  = document.getElementById('category').value;
+      const desc      = document.getElementById('description').value.trim();
+
+      if (!amountRaw || amountRaw <= 0 || !category || !desc) return;
+
+      transactions.push({
+        id: Date.now(),
+        date: new Date().toISOString(),
+        amount: amountRaw,
+        category,
+        description: desc
+      });
+
+      e.target.reset();
+      document.getElementById('category').selectedIndex = 0;
+      render();
+    });
+
+    // ── Delete ──
+    document.querySelector('#transactions-table').addEventListener('click', e => {
+      const btn = e.target.closest('.btn-delete');
+      if (!btn) return;
+      const id = Number(btn.dataset.id);
+      transactions = transactions.filter(t => t.id !== id);
+      render();
+    });
+
+    // ── Filters ──
+    document.getElementById('filter-category').addEventListener('change', renderTable);
+    document.getElementById('filter-month').addEventListener('change', renderTable);
+
+    // ── Export CSV ──
+    document.getElementById('export-btn').addEventListener('click', () => {
+      const filtered = getFilteredTransactions();
+      const rows = [['Date', 'Description', 'Category', 'Amount']];
+      filtered.forEach(t => {
+        const sign = isIncome(t.category) ? '' : '-';
+        rows.push([dateStr(t.date), t.description, t.category, sign + t.amount.toFixed(2)]);
+      });
+      const csv  = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = 'transactions.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    // ── AI Insights ──
+    async function getAIInsights() {
+      const txns = getFilteredTransactions();
+      if (txns.length < 3) {
+        alert('Add at least 3 transactions for a meaningful analysis');
+        return;
+      }
+
+      const loadingEl = document.getElementById('insight-loading');
+      const displayEl = document.getElementById('insight-display');
+      const btn       = document.getElementById('analyze-btn');
+
+      loadingEl.style.display = 'block';
+      displayEl.style.display = 'none';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('https://finance-tracker-api-7veo.onrender.com/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            transactions: txns,
+            prompt: `You are a personal finance advisor reviewing someone's real spending data.
+Analyze the transactions below and respond with:
+1. A one-line summary of their spending health
+2. Their top 3 expense categories with dollar amounts
+3. How their spending compares to the 50/30/20 rule (50% needs, 30% wants, 20% savings) if income data is present
+4. Two specific, actionable suggestions — each must include a concrete first step they can take this week and an estimated monthly savings amount
+
+Be direct and specific. Name actual numbers, not just percentages. Skip the cheerleading.`
+          })
+        });
+
+        if (!res.ok) throw new Error(`Server error: ${res.status}`);
+        const data = await res.json();
+
+        displayEl.textContent = data.insight;
+        displayEl.classList.remove('placeholder');
+        document.getElementById('copy-btn').style.display = 'inline-block';
+      } catch (err) {
+        const msg = err instanceof TypeError && err.message === 'Failed to fetch'
+          ? 'Server is Offline'
+          : `Error: ${err.message}`;
+        displayEl.textContent = msg;
+        displayEl.classList.remove('placeholder');
+        console.error('getAIInsights failed:', err);
+      } finally {
+        loadingEl.style.display = 'none';
+        displayEl.style.display = 'block';
+        btn.disabled = false;
+      }
+    }
+
+    document.getElementById('analyze-btn').addEventListener('click', getAIInsights);
+
+    // ── Copy insight ──
+    document.getElementById('copy-btn').addEventListener('click', function () {
+      const text = document.getElementById('insight-display').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        if (this.classList.contains('copied')) return;
+        this.textContent = '✓ Copied!';
+        this.classList.add('copied');
+        setTimeout(() => {
+          this.textContent = 'Copy';
+          this.classList.remove('copied');
+        }, 2000);
+      });
+    });
+
+    // ── Init ──
+    render();
+  </script>
+</body>
+</html>
